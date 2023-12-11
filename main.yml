@@ -1,0 +1,64 @@
+---
+
+- name: Setup PolkaDot instance
+  hosts: all
+  remote_user: admin 
+  become: yes
+  gather_facts: no
+  vars:
+    polkadot_version: 1.0.0
+    ansible_ssh_private_key_file: "./aws.pem"
+
+  tasks:
+    - name: Wait for host to become ready
+      wait_for_connection:
+        delay: 5
+        timeout: 600
+        sleep: 5
+
+    - name: Set default NTP pool
+      lineinfile:
+        path: /etc/systemd/timesyncd.conf
+        regexp: ^#NTP=
+        line: NTP=pool.ntp.org
+
+    - name: Make sure timesyncd is running
+      systemd:
+        name: systemd-timesyncd
+        state: started
+        enabled: yes
+
+    - name: Install gpg package
+      apt:
+        name: gpg
+        state: present
+        update_cache: yes
+
+    - name: Install key to keyring
+      apt_key:
+        keyserver: hkps://keys.mailvelope.com
+        id: 9D4B2B6EB8F97156D19669A9FF0812D491B96798
+        state: present
+        keyring: /usr/share/keyrings/parity.gpg
+
+    - name: Install apt repository
+      apt_repository:
+        repo: deb [signed-by=/usr/share/keyrings/parity.gpg] https://releases.parity.io/deb release main
+        state: present
+
+    - name: Install parity-keyring package
+      apt:
+        name: parity-keyring
+        state: present
+        update_cache: yes
+
+    - name: Install polkadot package {{ polkadot_version }}
+      apt:
+        name: polkadot={{ polkadot_version }}
+        state: present
+
+    - name: Make sure polkadot is running
+      systemd:
+        name: polkadot
+        state: started
+        enabled: yes
