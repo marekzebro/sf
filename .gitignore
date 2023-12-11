@@ -1,0 +1,5 @@
+.terraform*
+terraform*
+aws.pem
+credentials
+hosts
